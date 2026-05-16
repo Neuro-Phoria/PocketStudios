@@ -1,0 +1,128 @@
+# Pocket Studios — GitLab CI/CD Pipeline
+image: eclipse-temurin:17-jdk
+
+variables:
+  ANDROID_COMPILE_SDK: "35"
+  ANDROID_BUILD_TOOLS: "35.0.0"
+  ANDROID_SDK_TOOLS: "11076708"
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
+
+# Cache Gradle dependencies
+cache:
+  key: gradle-$CI_COMMIT_REF_SLUG
+  paths:
+    - .gradle/
+    - ~/.gradle/caches/
+
+stages:
+  - validate
+  - test
+  - build
+  - distribute
+
+# ─── Setup Android SDK ────────────────────────────────────────────────────
+.android_setup: &android_setup
+  before_script:
+    - apt-get update -qq && apt-get install -y wget unzip
+    - wget --quiet --output-document=android-sdk.zip
+        "https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS}_latest.zip"
+    - mkdir -p android-sdk-linux/cmdline-tools
+    - unzip -d android-sdk-linux/cmdline-tools android-sdk.zip
+    - mv android-sdk-linux/cmdline-tools/cmdline-tools android-sdk-linux/cmdline-tools/latest
+    - export ANDROID_SDK_ROOT=$PWD/android-sdk-linux
+    - export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
+    - echo y | sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" > /dev/null
+    - echo y | sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}" > /dev/null
+    - echo y | sdkmanager "platform-tools" > /dev/null
+    - chmod +x gradlew
+
+# ─── Lint ─────────────────────────────────────────────────────────────────
+lint:
+  stage: validate
+  <<: *android_setup
+  script:
+    - ./gradlew lint
+  artifacts:
+    when: always
+    reports:
+      junit: "**/build/reports/lint-results-*.xml"
+    paths:
+      - "**/build/reports/lint-results-*.html"
+    expire_in: 1 week
+
+# ─── Unit Tests ───────────────────────────────────────────────────────────
+unit_tests:
+  stage: test
+  <<: *android_setup
+  script:
+    - ./gradlew testDevDebugUnitTest --continue
+  artifacts:
+    when: always
+    reports:
+      junit: "**/build/test-results/**/*.xml"
+    paths:
+      - "**/build/test-results/"
+    expire_in: 1 week
+
+# ─── Build Debug APK ──────────────────────────────────────────────────────
+build_debug:
+  stage: build
+  <<: *android_setup
+  script:
+    - ./gradlew assembleDevDebug
+  artifacts:
+    paths:
+      - app/build/outputs/apk/dev/debug/*.apk
+    expire_in: 1 week
+  except:
+    - tags
+
+# ─── Build Release AAB ────────────────────────────────────────────────────
+build_release:
+  stage: build
+  <<: *android_setup
+  script:
+    - mkdir -p app/keystore
+    - echo "$KEYSTORE_BASE64" | base64 --decode > app/keystore/release.jks
+    - ./gradlew bundleProductionRelease
+  variables:
+    STORE_PASSWORD: $STORE_PASSWORD
+    KEY_ALIAS: $KEY_ALIAS
+    KEY_PASSWORD: $KEY_PASSWORD
+    KEYSTORE_PATH: keystore/release.jks
+    REVENUECAT_API_KEY: $REVENUECAT_API_KEY
+  artifacts:
+    paths:
+      - app/build/outputs/bundle/productionRelease/*.aab
+    expire_in: 30 days
+  only:
+    - main
+    - tags
+
+# ─── Firebase App Distribution ────────────────────────────────────────────
+distribute_internal:
+  stage: distribute
+  image: ruby:3.2
+  script:
+    - gem install fastlane
+    - gem install fastlane-plugin-firebase_app_distribution
+    - fastlane distribute_internal
+  needs: [build_release]
+  only:
+    - main
+  environment:
+    name: internal
+
+# ─── Play Store Deploy (manual, tags only) ────────────────────────────────
+deploy_play_store:
+  stage: distribute
+  image: ruby:3.2
+  script:
+    - gem install fastlane
+    - fastlane supply --aab app/build/outputs/bundle/productionRelease/*.aab --track internal
+  needs: [build_release]
+  only:
+    - tags
+  when: manual
+  environment:
+    name: production

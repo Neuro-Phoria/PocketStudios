@@ -1,0 +1,54 @@
+# Android
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+
+# Keystore — NEVER commit to git
+*.jks
+*.keystore
+keystore/
+
+# Google Services — add per-environment, don't commit prod file
+google-services.json
+
+# Firebase credentials
+firebase-credentials.json
+service-account.json
+
+# Secrets
+.env
+.env.local
+secrets.properties
+
+# Node / Functions
+backend/firebase/functions/lib/
+backend/firebase/functions/node_modules/
+
+# Test reports
+**/build/test-results/
+**/build/reports/
+
+# Gradle cache
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# MacOS
+.DS_Store
+**/.DS_Store
+
+# IDE
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
