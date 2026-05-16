@@ -1,0 +1,12 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [1.0.0] - 2026-05-16
+
+### Initial Release
+- Video editing functionality
+- Audio track support
+- Text overlay capabilities
+- Auto-caption engine
+- Background removal processor

@@ -1,31 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Disable cleartext for all traffic -->
-    <base-config cleartextTrafficPermitted="false">
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </base-config>
-
-    <!-- Certificate pinning for production API -->
-    <domain-config>
-        <domain includeSubdomains="true">api.pocketstudios.app</domain>
-        <pin-set expiration="2026-12-01">
-            <!-- TODO: Replace with real certificate SHA-256 hash -->
-            <!-- Run: openssl s_client -connect api.pocketstudios.app:443 | openssl x509 -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | base64 -->
-            <pin digest="SHA-256">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</pin>
-            <!-- Backup pin (from CA) -->
-            <pin digest="SHA-256">BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=</pin>
-        </pin-set>
-    </domain-config>
-
-    <!-- Firebase domains — no pinning (they rotate certs frequently) -->
-    <domain-config>
-        <domain includeSubdomains="true">firebaseapp.com</domain>
-        <domain includeSubdomains="true">googleapis.com</domain>
-        <domain includeSubdomains="true">firebase.google.com</domain>
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </domain-config>
+    <!-- Network security configuration -->
 </network-security-config>
